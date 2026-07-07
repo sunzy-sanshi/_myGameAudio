@@ -9,7 +9,8 @@
 
 #include "AudioFileSourceFS.h"
 #include "AudioGenerator.h"
-#include "AudioOutputI2S.h"
+#include "ESP8266AUDIO_EX/GameI2S.h"
+#include "ESP8266AUDIO_EX/GameI2SNoDAC.h"
 #include "AudioOutputMixer.h"
 namespace GameAudio{
 enum SoundType{
@@ -33,26 +34,30 @@ typedef enum {
 } MusicPlayMode_t;
 
 // 根据咋们的板子，重写I2S函数
-class GameI2S : public AudioOutputI2S{
-    uint8_t _volume = 5; // 0 - 100
-    int8_t dinPin;
-    bool _isOutput = true;  // true=OUT, false=IN
-    bool _auto_clear = true;
-    i2s_chan_handle_t _rx_handle = nullptr;
-    i2s_std_slot_config_t _slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
-  public:
-    void SetAutoClear(bool auto_clear=true){if(i2sOn) return; _auto_clear = auto_clear;}
-    void SetStdSlotCfg(i2s_std_slot_config_t slot_cfg){if(i2sOn) return; _slot_cfg = slot_cfg;}
-    bool SetPins(int bclk, int wclk, int dout, int din = -1, int mclk = -1);
-    void SetOutput(bool isOutput = true){if(i2sOn) return; _isOutput = isOutput;}
-    void SetVolume(int8_t val);
-    uint8_t GetVolume(void){return _volume;}
-    size_t pushMono(int16_t* buf, size_t len);
-    size_t pushStereo(int16_t* buf, size_t len);
-    size_t pushBatch(int16_t* buf, size_t len, bool is_mono=false);
-    bool stop() override;
-    bool begin() override;
-};
+// class GameI2S : public AudioOutputI2S{
+//     uint8_t _volume = 5; // 0 - 100
+//     int8_t dinPin;
+//     bool _isOutput = true;  // true=OUT, false=IN
+//     bool _auto_clear = true;
+//     i2s_chan_handle_t _rx_handle = nullptr;
+//     i2s_std_slot_config_t _slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
+//   public:
+//     GameI2S() : AudioOutputI2S() {}
+//     inline void useApll(bool use=true){if(i2sOn) return; _useAPLL = use;}
+//     inline void SetAutoClear(bool auto_clear=true){if(i2sOn) return; _auto_clear = auto_clear;}
+//     inline void SetStdSlotCfg(i2s_std_slot_config_t slot_cfg){if(i2sOn) return; _slot_cfg = slot_cfg;}
+//     bool SetPins(int bclk, int wclk, int dout, int din = -1, int mclk = -1);
+//     inline void SetOutput(bool isOutput = true){if(i2sOn) return; _isOutput = isOutput;}
+//     void SetVolume(int8_t val);
+//     uint8_t GetVolume(void){return _volume;}
+//     size_t pushMono(int16_t* buf, size_t len);
+//     size_t pushStereo(int16_t* buf, size_t len);
+//     size_t pushBatch(int16_t* buf, size_t len, bool is_mono=false);
+//     inline uint16_t getFreq(){return hertz;}
+//     inline uint8_t getChannel(){return channels;}
+//     bool stop() override;
+//     bool begin() override;
+// };
 class GameAudio{
   public:
     GameAudio(GameI2S* out, FS& fs): _out(out), _fs(fs){};
@@ -66,7 +71,19 @@ class GameAudio{
     virtual void loop(){}
     virtual void end(){}
 
-    inline void set_volume(int8_t val){_out->SetVolume(val);}//_out->SetGain( float(_volume)/100.0 ); }
+    inline void set_volume(int8_t val){
+      // _volume = val<0 ? 0: (val>100?100:val);
+      // if(_volume>70){
+      //     _out->SetGain(float(_volume-70)/15.2 + 2.0);
+      // }else if(_volume>40){
+      //     _out->SetGain(float(_volume-40)/20.0 + 0.5);
+      // }else if(_volume>10){
+      //     _out->SetGain(float(_volume-10)/75.0 + 0.1);
+      // }else{
+      //     _out->SetGain(float(_volume)/100.0);
+      // }
+      _out->SetVolume(val);
+    }//_out->SetGain( float(_volume)/100.0 ); }
     inline uint8_t get_volume(){return _out->GetVolume();}
 
     inline void set_freq(int16_t val){ _freq = val; }
@@ -126,7 +143,7 @@ class GameAudioMixer : public GameAudio{
   public:
     // 带混声
     // 设置音效与背景音响度比例
-    GameAudioMixer(GameI2S* out,FS& fs,size_t buf_size=256);
+    GameAudioMixer(GameI2S* out, FS& fs, size_t buf_size=256);
     GameAudioMixer(FileType type1, FileType type2, GameI2S* out, FS& fs, size_t buf_size=256);
     ~GameAudioMixer();
     void play(const char* path,int idx=0) override;
