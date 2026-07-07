@@ -41,8 +41,8 @@ void GameAudioMixer::play(const char* path, int idx){
     }
     file[idx] = new AudioFileSourceFS(_fs, path);
     
-    UBaseType_t watermark = uxTaskGetStackHighWaterMark(NULL);
-    Serial.printf("栈剩余最小值: %u 字节\n", watermark);
+    // UBaseType_t watermark = uxTaskGetStackHighWaterMark(NULL);
+    // Serial.printf("栈剩余最小值: %u 字节\n", watermark);
 
     if(dec[idx]->begin(file[idx], stub[idx])){
         set_file_name(path, idx);
@@ -163,7 +163,7 @@ void GameAudioMixer::_stop(uint8_t idx){
         delete file[idx];
         file[idx] = nullptr;
     }
-    set_file_name(NULL, idx);
+    // set_file_name(NULL, idx);
 }
 void GameAudioMixer::_delDec(uint8_t idx){
     // Serial.printf("[_delDec] mixer=%p, stub=%p, dec=%p\n", (void*)mixer, (void*)stub[idx], (void*)dec[idx]);
