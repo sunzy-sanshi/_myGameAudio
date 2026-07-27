@@ -3,17 +3,19 @@
 #include "AudioGeneratorWAV.h"
 #include "AudioGeneratorFLAC.h"
 namespace GameAudio{
-GameAudioMixer::GameAudioMixer(FileType type1, FileType type2, GameI2S* out, FS& fs, size_t buf_size) : GameAudio(out,fs),_buff_size(buf_size){
-    _init(0);
-    _init(1);
+GameAudioMixer::GameAudioMixer(FileType type1, FileType type2, float g1, float g2, GameI2S* out, FS& fs, size_t buf_size) : GameAudio(out,fs),_buff_size(buf_size){
+    _init(0, g1);
+    _init(1, g2);
     _init_dec(0,type1);
     _init_dec(1,type2);
     _auto = false;
     // set_volume(5);
 }
+GameAudioMixer::GameAudioMixer(FileType type1, FileType type2, GameI2S* out, FS& fs, size_t buf_size) : GameAudioMixer(type1, type2, 0.5, 0.5/3, out, fs, buf_size){
+}
 GameAudioMixer::GameAudioMixer(GameI2S* out,FS &fs,size_t buf_size) : GameAudio(out,fs),_buff_size(buf_size){
-    _init(0);
-    _init(1);
+    _init(0, 0.5);
+    _init(1, 0.5/3);
     _auto = true;
     // set_volume(5);
 }
@@ -39,12 +41,11 @@ void GameAudioMixer::play(const char* path, int idx){
     }else{
         _stop(idx);
     }
-    file[idx] = new AudioFileSourceFS(_fs, path);
-    
+    if(_fs.exists(path)) file[idx] = new AudioFileSourceFS(_fs, path);
+    else return;
     // UBaseType_t watermark = uxTaskGetStackHighWaterMark(NULL);
     // Serial.printf("栈剩余最小值: %u 字节\n", watermark);
-
-    if(dec[idx]->begin(file[idx], stub[idx])){
+    if(file[idx] && dec[idx]->begin(file[idx], stub[idx])){
         set_file_name(path, idx);
         // Serial.printf("播放%s %d\n", _file_name[idx], _out->getFreq());
     }
@@ -63,7 +64,7 @@ void GameAudioMixer::play(const char* path, int idx){
 void GameAudioMixer::_replay(uint8_t idx){
     // Serial.printf("[_replay] mixer=%p, stub=%p, dec=%p\n", (void*)mixer, (void*)stub[idx], (void*)dec[idx]);
     _stop(idx);
-    if(_file_name[idx] != ""){
+    if(_file_name[idx] && _file_name[idx] != ""){
         // Serial.printf("重播%s\n",_file_name[idx]);
         file[idx] = new AudioFileSourceFS(_fs,_file_name[idx]);
         if(!dec[idx]->begin(file[idx], stub[idx])){
@@ -121,7 +122,7 @@ void GameAudioMixer::end(){
     }
 }
 
-void GameAudioMixer::_init(uint8_t idx){
+void GameAudioMixer::_init(uint8_t idx, float g){
     if(!mixer){
         mixer = new AudioOutputMixer(_buff_size,_out);
         if(_freq>0) mixer->SetRate(_freq);
@@ -129,7 +130,8 @@ void GameAudioMixer::_init(uint8_t idx){
     }
     if(!stub[idx]){
         stub[idx] = mixer->NewInput();
-        stub[idx]->SetGain(0.5/(2*idx+1));
+        // stub[idx]->SetGain(0.5/(2*idx+1));
+        stub[idx]->SetGain(g);
         if(_freq>0) stub[idx]->SetRate(_freq);
         if(_channel>0) stub[idx]->SetChannels(_channel);
     }

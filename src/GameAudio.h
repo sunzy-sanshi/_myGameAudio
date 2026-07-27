@@ -88,7 +88,10 @@ class GameAudio{
 
     inline void set_freq(int16_t val){ _freq = val; }
     inline void set_channel(int8_t val){ _channel = val; }
-    inline const char* get_file_name(int idx){ return _file_name[idx]; }
+    inline const char* get_file_name(int idx){
+      // if(strcmp(_file_name[idx],"")==0) return nullptr;
+      return _file_name[idx];
+    }
     void set_file_name(const char* name, int idx);
     FileType detect_file_type(const char* path);
     // size_t push_mono(int16_t* buf, size_t len);
@@ -107,7 +110,8 @@ class GameAudio{
     int16_t _freq=-1;
     int8_t _channel=-1;
 
-    char _file_name[2][32]={"",""};
+    // char _file_name[2][32]={"",""};
+    char* _file_name[2]={nullptr,nullptr};
     FileType    _file_type[2]={FILE_TYPE_MP3,FILE_TYPE_WAV};
 
     GameI2S* _out=nullptr;
@@ -145,6 +149,7 @@ class GameAudioMixer : public GameAudio{
     // 设置音效与背景音响度比例
     GameAudioMixer(GameI2S* out, FS& fs, size_t buf_size=256);
     GameAudioMixer(FileType type1, FileType type2, GameI2S* out, FS& fs, size_t buf_size=256);
+    GameAudioMixer(FileType type1, FileType type2, float g1, float g2, GameI2S* out, FS& fs, size_t buf_size=256);
     ~GameAudioMixer();
     void play(const char* path,int idx=0) override;
     void stop() override;
@@ -153,7 +158,7 @@ class GameAudioMixer : public GameAudio{
   private:
     size_t _buff_size=0;
 
-    void _init(uint8_t idx);
+    void _init(uint8_t idx, float g);
     void _init_dec(uint8_t idx, FileType type);
     void _replay(uint8_t idx);
     void _stop(uint8_t idx);

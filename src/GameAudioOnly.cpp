@@ -28,7 +28,8 @@ void GameAudioOnly::play(const char* path,int idx){
     }else{
         _stop(BGM);
     }
-    file[BGM] = new AudioFileSourceFS( _fs,path );
+    if(_fs.exists(path)) file[BGM] = new AudioFileSourceFS(_fs, path);
+    else return;
     // Serial.println("[play]开始播放音频 1");
     if(dec[BGM]->begin(file[BGM], _out)){
         set_file_name(path, BGM);
@@ -69,7 +70,7 @@ void GameAudioOnly::_init_dec(uint8_t idx, FileType type){
 }
 void GameAudioOnly::_replay(uint8_t idx){
     _stop(BGM);
-    if(_file_name[BGM]!=""){
+    if(_file_name[idx] && _file_name[BGM]!=""){
         Serial.println("继续播放");
         file[BGM]= new AudioFileSourceFS(_fs,_file_name[BGM]);
         if(!dec[BGM]->begin(file[BGM], _out)){

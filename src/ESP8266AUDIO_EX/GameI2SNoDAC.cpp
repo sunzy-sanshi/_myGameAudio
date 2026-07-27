@@ -64,26 +64,88 @@ GameI2SNoDAC::GameI2SNoDAC(int port) : GameI2S() {
 GameI2SNoDAC::~GameI2SNoDAC() {
     stop();
 }
+// bool GameI2SNoDAC::SetOversampling(int os) {
+//     // 原校验：必须32的倍数，最小32
+//     // if (os % 32) return false;
+//     // if (os < 32) return false;
+//     // 修改后：支持16的整数倍，最小16
+//     if (os % 16 != 0) return false;
+//     if (os > 256) return false;
+//     if (os < 16) return false;
+//     oversample = os;
+//     return SetRate(hertz); // 保持原有调用逻辑不变
+// }
+// void GameI2SNoDAC::DeltaSigma(int16_t sample[2], uint32_t dsBuff[8]) {
+//     // 1. 声道混合，和原版逻辑完全一致，音量不变
+//     int32_t sum = (((int32_t)sample[0]) + ((int32_t)sample[1])) >> 1;
 
+//     // 2. （可选）直流阻断，没加可以删掉，不影响基础功能
+//     // dc_acc += (sum - dc_acc) >> 10;
+//     // sum -= dc_acc;
+
+//     // 3. 增益与定点转换，完全沿用原版
+//     fixed24p8_t newSamp = ((int32_t)Amplify(sum)) << 8;
+
+//     // 4. 线性插值步进：每个比特步进一次，总增量刚好等于目标差值
+//     // 用除法替代原移位，兼容任意过采样值，ESP32硬件除法无性能压力
+//     fixed24p8_t diffPerStep = (newSamp - lastSamp) / oversample;
+//     lastSamp = newSamp;
+
+//     // 5. 按16bit分组打包，复用uint32_t缓冲区（uint32_t[8]等价于uint16_t[16]，最大支持256倍）
+//     uint16_t* buf_16 = (uint16_t*)dsBuff;
+//     int group_cnt = oversample / 16;
+
+//     for (int j = 0; j < group_cnt; j++) {
+//         uint16_t bits = 0;
+//         for (int i = 16; i > 0; i--) {
+//             bits <<= 1;
+//             // 完全沿用原版一阶调制逻辑，状态连续
+//             if (cumErr < 0) {
+//                 bits |= 1;
+//                 cumErr += fixedPosValue - newSamp;
+//             } else {
+//                 cumErr -= fixedPosValue + newSamp;
+//             }
+//             newSamp += diffPerStep; // 每个比特都步进插值
+//         }
+//         buf_16[j] = bits;
+//     }
+// }
+// bool GameI2SNoDAC::ConsumeSample(int16_t sample[2]) {
+//     int16_t ms[2];
+//     ms[0] = sample[0];
+//     ms[1] = sample[1];
+//     MakeSampleStereo16(ms);
+
+//     uint32_t dsBuff[8];
+//     DeltaSigma(ms, dsBuff);
+
+//     // 核心修改：按实际比特数计算发送字节数，16倍=2字节，32倍=4字节，64倍=8字节
+//     size_t send_bytes = oversample / 8;
+
+// #ifdef ESP32
+//     size_t i2s_bytes_written = 0;
+//     i2s_channel_write(_tx_handle, (const char*)dsBuff, send_bytes, &i2s_bytes_written, 0);
+//     return i2s_bytes_written == send_bytes;
+// #elif 其他平台
+//     // 对应平台同步按字节数修改发送逻辑
+// #endif
+//     return true;
+// }
 bool GameI2SNoDAC::SetOversampling(int os) {
-    if (os % 32) {
-        return false;    // Only Nx32 oversampling supported
-    }
-    if (os > 256) {
-        return false;    // Don't be silly now!
-    }
-    if (os < 32) {
-        return false;    // Nothing under 32 allowed
-    }
+    if (os % 32) return false;    // Only Nx32 oversampling supported
+    if (os > 256) return false;    // Don't be silly now!
+    if (os < 32) return false;    // Nothing under 32 allowed
 
     oversample = os;
     return SetRate(hertz);
 }
-
 void GameI2SNoDAC::DeltaSigma(int16_t sample[2], uint32_t dsBuff[8]) {
     // Not shift 8 because addition takes care of one mult x 2
     int32_t sum = (((int32_t)sample[0]) + ((int32_t)sample[1])) >> 1;
     fixed24p8_t newSamp = ((int32_t)Amplify(sum)) << 8;
+    // int32_t raw = Amplify(sum) * 0.65; // 降低35%增益，按需0.5~0.8调节
+    // fixed24p8_t newSamp = raw << 8;
 
     int oversample32 = oversample / 32;
     // How much the comparison signal changes each oversample step

@@ -151,9 +151,18 @@ GameAudio::~GameAudio(){
 }
 void GameAudio::set_file_name(const char* name, int idx){
     if(name){
-        snprintf(_file_name[idx], 32, "%s", name);
+        if(_file_name[idx]){
+            free(_file_name[idx]);
+        }
+        _file_name[idx]=strdup(name);
+        //snprintf(_file_name[idx], 32, "%s", name);
     }else{
-        _file_name[idx][0]='\0';
+        if(_file_name[idx]){
+            free(_file_name[idx]);
+            _file_name[idx]=nullptr;
+        }
+
+        // _file_name[idx][0]='\0';
     }
 }
 FileType GameAudio::detect_file_type(const char* path){
