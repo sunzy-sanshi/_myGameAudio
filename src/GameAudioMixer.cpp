@@ -41,12 +41,15 @@ void GameAudioMixer::play(const char* path, int idx){
     }else{
         _stop(idx);
     }
+    // printf("[0]play %s\n", path);
     if(_fs.exists(path)) file[idx] = new AudioFileSourceFS(_fs, path);
     else return;
+    // printf("[1]play %s\n", path);
     // UBaseType_t watermark = uxTaskGetStackHighWaterMark(NULL);
     // Serial.printf("栈剩余最小值: %u 字节\n", watermark);
     if(file[idx] && dec[idx]->begin(file[idx], stub[idx])){
         set_file_name(path, idx);
+        // printf("[2]play %s\n", path);
         // Serial.printf("播放%s %d\n", _file_name[idx], _out->getFreq());
     }
     // Serial.printf("free heap: %d\n", ESP.getFreeHeap());

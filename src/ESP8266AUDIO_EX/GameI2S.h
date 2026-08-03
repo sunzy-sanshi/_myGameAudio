@@ -74,7 +74,6 @@ public:
     inline uint8_t getChannel(){return channels;}
     ///////////////////////////////////////////////////////
 
-
     virtual bool SetRate(int hz) override;
     virtual bool SetChannels(int channels) override;
     virtual bool begin() override;
@@ -111,6 +110,7 @@ protected:
     size_t _buffers;
     size_t _bufferWords;
 
+    uint8_t _speed = 1;
     uint8_t _volume = 5; // 0 - 100
     int8_t dinPin;
     bool _isOutput = true;  // true=OUT, false=IN

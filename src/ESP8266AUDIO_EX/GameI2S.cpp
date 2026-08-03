@@ -359,16 +359,53 @@ void GameI2S::SetVolume(int8_t val){
 size_t GameI2S::pushMono(int16_t* buf, size_t len){
     if(!i2sOn || !buf || len == 0) return 0;
     size_t pushed = 0;
-    for(size_t i = 0; i < len; i++) {
-        int16_t samples_array[] = {buf[i], buf[i]};
-        if(ConsumeSample(samples_array))  break;  // 缓冲区满
-        pushed++;
-    }
+    if(_speed > 1){
+        size_t total = len;
+        size_t outTotal = total / _speed;
+        for(size_t gi = 0; gi < outTotal; gi++){
+            size_t srcIdx = gi * _speed;
+            buf[pushed] = buf[srcIdx];
+            int16_t samples_array[] = {buf[pushed], buf[pushed]};
+            if(ConsumeSample(samples_array)){
+                break;
+            }else{
+                pushed++;
+            }
+        }
+    }else{
+        for(size_t i = 0; i < len; i++) {
+            int16_t samples_array[] = {buf[i], buf[i]};
+            if(ConsumeSample(samples_array))  break;  // 缓冲区满
+            pushed++;
+        }
+    } 
     return pushed;
 }
 size_t GameI2S::pushStereo(int16_t* buf, size_t len){
-    uint16_t pushed = ConsumeSamples(buf, len/2);
-    return 2*pushed;
+    if(_speed > 1){
+        // 立体声一组2个int16，计算总立体声组数
+        size_t group_total = len / 2;
+        size_t group_out = group_total / _speed;
+        // size_t send_buf_len = group_out * 2;
+        size_t di = 0;
+        for (size_t gi = 0; gi < group_out; gi++){
+            // 原始组下标
+            size_t src_group = gi * _speed;
+            // 原buf对应一组左右声道位置
+            size_t src_idx = src_group * 2;
+            // 写入当前输出位置，完整复制左右声道
+            buf[di] = buf[src_idx];
+            buf[di + 1] = buf[src_idx + 1];
+            di += 2;
+        }
+        uint16_t pushed = ConsumeSamples(buf, group_out);
+        return 2*pushed;
+    }else{
+        uint16_t pushed = ConsumeSamples(buf, len/2);
+        return 2*pushed;
+    }
+
+    
 }
 size_t GameI2S::pushBatch(int16_t* buf, size_t len, bool is_mono){
     // 双声道len=samples*2, 单声道len=samples
